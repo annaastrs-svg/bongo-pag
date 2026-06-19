@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bongo Cat — ESP32 Project</title>
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<style>
+:root {
+  --pink: #FF6EB4;
+  --pink-dim: #C44E89;
+  --pink-glow: rgba(255,110,180,0.15);
+  --black: #0D0D0D;
+  --black-mid: #161616;
+  --black-card: #1C1C1C;
+  --black-raised: #242424;
+  --white: #F0E8E8;
+  --white-dim: #C8B8B8;
+  --border: #333333;
+  --border-pink: #5A2040;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--black);
+  font-family: 'VT323', monospace;
+  color: var(--white);
+  overflow-x: hidden;
+  line-height: 1.65;
+}
+
+/* ── GRAIN OVERLAY ── */
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none;
+  z-index:9999;
+  opacity:0.6;
+}
+
+/* ── SPARKLES ── */
+#sparkles {
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:1;
+  overflow:hidden;
+}
+.sp {
+  position:absolute;
+  animation: tw var(--d,3s) ease-in-out infinite var(--dl,0s);
+  opacity:0;
+}
+@keyframes tw {
+  0%,100%{opacity:0;transform:scale(.4) rotate(0deg)}
+  50%{opacity:.8;transform:scale(1) rotate(90deg)}
+}
+
+/* ── PAGE WRAPPER ── */
+.page {
+  position:relative;
+  z-index:2;
+  max-width:940px;
+  margin:0 auto;
+  padding:0 24px 100px;
+}
+
+/* ── NAV ── */
+nav {
+  position:sticky;
+  top:16px;
+  z-index:100;
+  display:flex;
+  flex-wrap:wrap;
+  gap:2px;
+  background: var(--black-card);
+  border:1.5px solid var(--border-pink);
+  padding:8px 16px;
+  margin-bottom:40px;
+  outline:1px solid var(--black);
+}
+nav a {
+  font-family:'VT323', monospace;
+  font-size:1.1rem;
+  color:var(--white-dim);
+  text-decoration:none;
+  padding:4px 12px;
+  letter-spacing:1px;
+  transition:color .15s, background .15s;
+}
+nav a:hover { color:var(--pink); background:rgba(255,110,180,0.08); }
+
+/* ── CARDS ── */
+.card {
+  background: var(--black-card);
+  border:1.5px solid var(--border);
+  padding:36px 40px;
+  margin-bottom:28px;
+  position:relative;
+}
+.card::after {
+  content:'';
+  position:absolute;
+  bottom:-5px; right:-5px;
+  width:100%; height:100%;
+  border:1.5px solid var(--border-pink);
+  pointer-events:none;
+  z-index:-1;
+}
+.card-dark {
+  background: var(--black-mid);
+  border-color: var(--border-pink);
+}
+.card-raised {
+  background: var(--black-raised);
+}
+
+/* ── SECTION TITLE ── */
+.h2 {
+  font-family:'VT323', monospace;
+  font-size:2.8rem;
+  font-weight:400;
+  color:var(--pink);
+  margin-bottom:6px;
+  letter-spacing:3px;
+  line-height:1;
+}
+.h2 span {
+  font-family:'VT323', monospace;
+  font-size:1rem;
+  color:var(--white-dim);
+  letter-spacing:3px;
+  display:block;
+  margin-top:4px;
+  font-weight:400;
+}
+.rule {
+  border:none;
+  border-top:1px solid var(--border-pink);
+  margin:20px 0;
+}
+
+/* ── HERO ── */
+.hero-wrap {
+  text-align:center;
+  padding:70px 40px 50px;
+}
+.hero-title {
+  font-family:'VT323', monospace;
+  font-size:8rem;
+  font-weight:400;
+  color:var(--white);
+  line-height:.9;
+  letter-spacing:8px;
+  text-shadow: 4px 4px 0 var(--pink-dim);
+}
+.hero-title em {
+  color:var(--pink);
+  font-style:normal;
+  display:block;
+  font-size:9.5rem;
+  letter-spacing:10px;
+  text-shadow: 4px 4px 0 var(--pink-dim);
+}
+.hero-sub {
+  font-family:'VT323', monospace;
+  font-size:1.3rem;
+  letter-spacing:5px;
+  color:var(--white-dim);
+  margin-top:16px;
+  text-transform:uppercase;
+}
+.hero-cat-svg {
+  display:block;
+  margin:0 auto 24px;
+  animation: flt 3.5s ease-in-out infinite;
+}
+@keyframes flt {
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-10px)}
+}
+.chip {
+  display:inline-block;
+  font-family:'VT323', monospace;
+  font-size:1.05rem;
+  letter-spacing:2px;
+  border:1px solid var(--border-pink);
+  color:var(--pink);
+  padding:4px 16px;
+  margin:4px;
+  background:rgba(255,110,180,0.06);
+}
+.try-btn {
+  display:inline-block;
+  font-family:'VT323', monospace;
+  font-size:1.6rem;
+  letter-spacing:3px;
+  background:var(--pink);
+  color:var(--black);
+  padding:12px 36px;
+  border:none;
+  margin-top:28px;
+  text-decoration:none;
+  transition:transform .08s, box-shadow .08s;
+  box-shadow:4px 4px 0 var(--pink-dim);
+}
+.try-btn:hover { transform:translate(-2px,-2px); box-shadow:6px 6px 0 var(--pink-dim); }
+.try-btn:active { transform:translate(2px,2px); box-shadow:1px 1px 0 var(--pink-dim); }
+
+/* ── BODY TEXT ── */
+p { font-size:1rem; color:var(--white-dim); line-height:1.75; margin-bottom:14px; }
+p strong { color:var(--white); font-weight:400; }
+p em { color:var(--pink); font-style:normal; }
+code {
+  font-family:'VT323', monospace;
+  background:rgba(255,110,180,0.1);
+  border:1px solid var(--border-pink);
+  color:var(--pink);
+  padding:1px 7px;
+  font-size:1rem;
+  letter-spacing:1px;
+}
+
+/* ── INFO CARDS ── */
+.grid-4 { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin:20px 0; }
+.ic {
+  background:var(--black-raised);
+  border:1px solid var(--border);
+  padding:18px 20px;
+  position:relative;
+}
+.ic::before {
+  content:'';
+  position:absolute;
+  top:0; left:0;
+  width:3px; height:100%;
+  background:var(--pink);
+}
+.ic-label {
+  font-family:'VT323', monospace;
+  font-size:0.85rem;
+  letter-spacing:3px;
+  color:var(--pink);
+  text-transform:uppercase;
+  margin-bottom:6px;
+}
+.ic-val {
+  font-family:'VT323', monospace;
+  font-size:1.8rem;
+  font-weight:400;
+  color:var(--white);
+  letter-spacing:2px;
+}
+
+/* ── BOM TABLE ── */
+.bom { width:100%; border-collapse:collapse; margin-top:16px; }
+.bom th {
+  font-family:'VT323', monospace;
+  font-size:0.9rem;
+  letter-spacing:3px;
+  color:var(--pink);
+  text-align:left;
+  padding:8px 14px;
+  border-bottom:1px solid var(--border-pink);
+  text-transform:uppercase;
+}
+.bom td {
+  padding:11px 14px;
+  font-size:0.95rem;
+  color:var(--white-dim);
+  border-bottom:1px solid var(--border);
+}
+.bom tr:hover td { background:rgba(255,110,180,0.05); color:var(--white); }
+.qty {
+  display:inline-block;
+  font-family:'VT323', monospace;
+  font-size:1.1rem;
+  letter-spacing:1px;
+  border:1px solid var(--border-pink);
+  color:var(--pink);
+  padding:0 10px;
+  min-width:36px;
+  text-align:center;
+}
+.bom td:first-child { color:var(--pink); }
+
+/* ── PIN GRID ── */
+.pin-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.pin-box { background:var(--black-raised); border:1px solid var(--border); overflow:hidden; }
+.pin-head {
+  background:var(--pink);
+  color:var(--black);
+  font-family:'VT323', monospace;
+  font-size:1.2rem;
+  letter-spacing:3px;
+  padding:8px 16px;
+  text-transform:uppercase;
+}
+.pin-row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:9px 16px;
+  border-bottom:1px solid var(--border);
+  font-size:.9rem;
+}
+.pin-row:last-child{border:none;}
+.ptag {
+  font-family:'VT323', monospace;
+  font-size:.9rem;
+  letter-spacing:1px;
+  padding:2px 8px;
+}
+.ptag-esp { background:var(--black); color:var(--pink); border:1px solid var(--border-pink); }
+.ptag-dev { color:var(--white-dim); border:1px solid var(--border); }
+.parr { color:var(--pink); }
+
+/* ── VOLT CARDS ── */
+.vcard {
+  display:flex;
+  align-items:center;
+  gap:20px;
+  background:var(--black-raised);
+  border:1px solid var(--border);
+  border-left:3px solid var(--pink);
+  padding:16px 22px;
+  margin-bottom:10px;
+}
+.vnum {
+  font-family:'VT323', monospace;
+  font-size:2.4rem;
+  font-weight:400;
+  color:var(--pink);
+  min-width:72px;
+  letter-spacing:2px;
+}
+.vdesc { font-size:.93rem; color:var(--white-dim); }
+.vcomp {
+  font-family:'VT323', monospace;
+  font-size:.8rem;
+  letter-spacing:2px;
+  color:var(--pink-dim);
+  margin-top:3px;
+  text-transform:uppercase;
+}
+
+/* ── DIFFICULTY ── */
+.diff-item {
+  display:flex;
+  gap:20px;
+  align-items:flex-start;
+  padding:20px 0;
+  border-bottom:1px solid var(--border);
+}
+.diff-item:last-child { border:none; }
+.dnum {
+  font-family:'VT323', monospace;
+  font-size:2.8rem;
+  color:var(--pink);
+  min-width:44px;
+  line-height:1;
+}
+.diff-item h4 {
+  font-family:'VT323', monospace;
+  font-size:1.5rem;
+  font-weight:400;
+  color:var(--white);
+  letter-spacing:2px;
+  margin-bottom:4px;
+}
+
+/* ── STEP LIST ── */
+.step {
+  display:flex;
+  gap:16px;
+  padding:16px 0;
+  border-bottom:1px solid var(--border);
+  align-items:flex-start;
+}
+.step:last-child{border:none;}
+.snum {
+  font-family:'VT323', monospace;
+  font-size:1.6rem;
+  color:var(--black);
+  background:var(--pink);
+  width:36px; height:36px;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+  font-weight:700;
+}
+.stext { font-size:.95rem; color:var(--white-dim); padding-top:4px; }
+.stext strong { font-family:'VT323', monospace; font-size:1.2rem; letter-spacing:2px; color:var(--white); font-weight:400; display:block; margin-bottom:2px; }
+
+/* ── HIGHLIGHT ── */
+.hl {
+  background:rgba(255,110,180,0.07);
+  border-left:3px solid var(--pink);
+  padding:14px 18px;
+  margin:16px 0;
+  font-size:.93rem;
+  color:var(--white-dim);
+}
+.hl strong { color:var(--pink); font-weight:400; }
+
+/* ── CODE ── */
+.code-wrap {
+  background:#080808;
+  border:1px solid var(--border-pink);
+  margin-top:12px;
+  overflow:hidden;
+}
+.code-bar {
+  background:#111;
+  border-bottom:1px solid var(--border-pink);
+  padding:8px 18px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.cdot { width:10px; height:10px; border-radius:50%; }
+.cdot.r{background:#FF5F57;} .cdot.y{background:#FFBD2E;} .cdot.g{background:#28CA41;}
+.cfile {
+  font-family:'VT323', monospace;
+  color:var(--pink);
+  font-size:.9rem;
+  letter-spacing:2px;
+  margin-left:6px;
+}
+.code-body {
+  padding:24px;
+  overflow-x:auto;
+  max-height:500px;
+  overflow-y:auto;
+}
+.code-body pre {
+  font-family:'Courier New', monospace;
+  font-size:.8rem;
+  line-height:1.75;
+  color:#AAA;
+  white-space:pre;
+}
+.ck{color:#FF79C6;} .cf{color:#8BE9FD;} .cs{color:#F1FA8C;} .cn{color:#BD93F9;}
+.cc{color:#555; font-style:italic;} .ct{color:#FFB86C;} .cd{color:#50FA7B;}
+
+/* ── DIAGRAM / MOCK BOXES ── */
+.mock {
+  background:#080808;
+  border:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:220px;
+}
+
+/* ── FOOTER ── */
+footer {
+  text-align:center;
+  padding:50px 20px;
+  font-family:'VT323', monospace;
+  font-size:1.2rem;
+  letter-spacing:3px;
+  color:var(--pink-dim);
+  border-top:1px solid var(--border-pink);
+  margin-top:20px;
+}
+
+/* ── PHOTO SLOTS ── */
+.photo-slot {
+  background: #080808;
+  border: 1.5px solid var(--border);
+}
+.photo-slot[src=""] {
+  min-height: 80px;
+  border: 1.5px dashed var(--border-pink);
+}
+
+  .hero-title{font-size:4rem;}
+  .pin-grid{grid-template-columns:1fr;}
+  .card{padding:24px 20px;}
+  .grid-4{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<div id="sparkles"></div>
+
+<div class="page">
+
+<!-- NAV -->
+<nav>
+  <a href="#idea">IDEA</a>
+  <a href="#hw">HARDWARE</a>
+  <a href="#volt">VOLTAJES</a>
+  <a href="#pines">PINES</a>
+  <a href="#pcb">PCB</a>
+  <a href="#cad">CAD</a>
+  <a href="#ens">ENSAMBLAJE</a>
+  <a href="#code">CODIGO</a>
+  <a href="#dif">DIFICULTADES</a>
+  <a href="#fotos">FOTOS</a>
+  <a href="#fin">RESULTADO</a>
+</nav>
+
+<!-- HERO -->
+<section class="card card-dark hero-wrap">
+  <h1 class="hero-title">BONGO<br><em>CAT</em></h1>
+  <p class="hero-sub">ESP32 + OLED + BUZZER — 2026</p>
+
+  <div style="margin-top:24px;">
+    <span class="chip">ESP32</span>
+    <span class="chip">OLED 0.91"</span>
+    <span class="chip">2× BTN</span>
+    <span class="chip">BUZZER</span>
+  </div>
+
+  <a href="https://wokwi.com/projects/465673627824576513" target="_blank" class="try-btn">PROBAR EN WOKWI</a>
+</section>
+
+<!-- IDEA -->
+<section id="idea" class="card">
+  <div class="h2">La idea<span>Bongo cat :B</span></div>
+  <hr class="rule">
+  <div style="display:grid;grid-template-columns:1fr 220px;gap:32px;align-items:start;">
+    <div>
+      <p>Todo empezó con el clásico meme de <em>Bongo Cat</em>  </p>
+      <p>presionas dos botones y el gato anima sus brazos en una pantalla OLED, sincronizado con notas musicales en un buzzer. </p>
+      <p>El proyecto combina animación por bitmaps en OLED de 128×32px, detección de botones y generación de tonos vía PWM </p>
+      <div class="hl">
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <!-- PON TU FOTO AQUI: cambia src="" por la ruta de tu imagen -->
+      <img src="WhatsApp Image 2026-06-18 at 10.27.38 PM.jpeg" alt="WhatsApp Image 2026-06-18 at 10.27.38 PM.jpeg" class="photo-slot" style="width:200px;height:200px;object-fit:cover;display:block;margin:0 auto;">
+      <p style="font-family:'VT323',monospace;font-size:.85rem;letter-spacing:2px;color:var(--pink-dim);margin-top:8px;"></p>
+    </div>
+  </div>
+</section>
+
+<!-- HARDWARE -->
+<section id="hw" class="card card-dark">
+  <div class="h2">Hardware<span>BILL OF MATERIALS</span></div>
+  <hr class="rule">
+
+  <div class="grid-4">
+    <div class="ic"><div class="ic-label">MCU</div><div class="ic-val">ESP32</div></div>
+    <div class="ic"><div class="ic-label">Display</div><div class="ic-val">OLED 0.91"</div></div>
+    <div class="ic"><div class="ic-label">Input</div><div class="ic-val">2× BTN</div></div>
+    <div class="ic"><div class="ic-label">Audio</div><div class="ic-val">Buzzer</div></div>
+  </div>
+
+  <table class="bom">
+    <thead>
+      <tr><th>#</th><th>Componente</th><th>Especificación</th><th>Cantidad</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>01</td><td>ESP32 DevKit</td><td>Dual-core 240MHz · WiFi+BT · 3.3V lógica</td><td><span class="qty">×1</span></td></tr>
+      <tr><td>02</td><td>OLED SSD1306</td><td>0.91" · 128×32px · I2C · 3.3V</td><td><span class="qty">×1</span></td></tr>
+      <tr><td>03</td><td>Push Button</td><td>Momentáneo · 4 pines · PCB mount</td><td><span class="qty">×2</span></td></tr>
+      <tr><td>04</td><td>Buzzer Piezoeléctrico</td><td>Pasivo · TMB12A05 · 5V compatible</td><td><span class="qty">×1</span></td></tr>
+      <tr><td>05</td><td>Resistencias</td><td>10kΩ pull-up para botones</td><td><span class="qty">×2</span></td></tr>
+      <tr><td>06</td><td>PCB personalizado</td><td>KiCad · 2 capas · fabricado JLCPCB</td><td><span class="qty">×1</span></td></tr>
+    </tbody>
+  </table>
+
+  <!-- PON TU FOTO AQUI: cambia src="" por la ruta de tu imagen del esquematico -->
+  <img src="Captura de pantalla 2026-05-30 101031.png" alt="esquematico" class="photo-slot" style="width:100%;height:240px;object-fit:contain;display:block;margin-top:24px;">
+</section>
+
+<!-- VOLTAJES -->
+<section id="volt" class="card">
+  <div class="h2">Voltajes<span></span></div>
+  <hr class="rule">
+  <p>Todos los componentes necesitan voltajes compatibles. La entrada es USB 5V y el ESP32 regula internamente a 3.3V.</p>
+
+  <div style="margin-top:20px;">
+    <div class="vcard">
+      <div class="vnum">5V</div>
+      <div><div class="vdesc">Alimentación principal por USB (VIN)</div><div class="vcomp">ENTRADA → ESP32</div></div>
+    </div>
+    <div class="vcard">
+      <div class="vnum">3.3V</div>
+      <div><div class="vdesc">Lógica interna del ESP32 de señales GPIO</div><div class="vcomp">REGULADO INTERNO → OLED + BOTONES</div></div>
+    </div>
+    <div class="vcard">
+      <div class="vnum">3.3V</div>
+      <div><div class="vdesc">Alimentación del OLED SSD1306 vía pin VCC</div><div class="vcomp">BUS I2C A 3.3V — 400kHz</div></div>
+    </div>
+    <div class="vcard">
+      <div class="vnum">3.3V</div>
+      <div><div class="vdesc">Buzzer pasivo recibe señal PWM del GPIO25</div><div class="vcomp"> ESP32 → BUZZER /div></div>
+    </div>
+    <div class="vcard">
+      <div class="vnum">0–3.3</div>
+      <div><div class="vdesc">Botones con pull-up interno: HIGH en reposo, LOW al presionar</div><div class="vcomp">GPIO18, GPIO19 → INPUT_PULLUP</div></div>
+    </div>
+  </div>
+  <div class="hl" style="margin-top:16px;">
+    <strong>CRITICO</strong> — El ESP32 NO es tolerante a 5V en sus GPIOs. Nunca conectar señales de 5V sin divisor de voltaje. Daño permanente al chip.
+  </div>
+</section>
+
+<!-- PINES -->
+<section id="pines" class="card card-dark">
+  <div class="h2">Pines<span>PINOUT COMPLETO</span></div>
+  <hr class="rule">
+  <div class="pin-grid">
+    <div class="pin-box">
+      <div class="pin-head">ESP32 → OLED</div>
+      <div class="pin-row"><span class="ptag ptag-esp">GND</span><span class="parr">──▶</span><span class="ptag ptag-dev">GND</span></div>
+      <div class="pin-row"><span class="ptag ptag-esp">3V3</span><span class="parr">──▶</span><span class="ptag ptag-dev">VCC</span></div>
+      <div class="pin-row"><span class="ptag ptag-esp">GPIO 21</span><span class="parr">──▶</span><span class="ptag ptag-dev">SDA</span></div>
+      <div class="pin-row"><span class="ptag ptag-esp">GPIO 22</span><span class="parr">──▶</span><span class="ptag ptag-dev">SCK</span></div>
+    </div>
+    <div class="pin-box">
+      <div class="pin-head">ESP32 → Botones</div>
+      <div class="pin-row"><span class="ptag ptag-esp">GND</span><span class="parr">──▶</span><span class="ptag ptag-dev">GND (BTN1)</span></div>
+      <div class="pin-row"><span class="ptag ptag-esp">GPIO 18</span><span class="parr">──▶</span><span class="ptag ptag-dev">S (BTN1)</span></div>
+      <div class="pin-row"><span class="ptag ptag-esp">GND</span><span class="parr">──▶</span><span class="ptag ptag-dev">GND (BTN2)</span></div>
+      <div class="pin-row"><span class="ptag ptag-esp">GPIO 19</span><span class="parr">──▶</span><span class="ptag ptag-dev">S (BTN2)</span></div>
+    </div>
+    <div class="pin-box">
+      <div class="pin-head">ESP32 → Buzzer</div>
+      <div class="pin-row"><span class="ptag ptag-esp">GND</span><span class="parr">──▶</span><span class="ptag ptag-dev">GND (BUZ)</span></div>
+      <div class="pin-row"><span class="ptag ptag-esp">GPIO 25</span><span class="parr">──▶</span><span class="ptag ptag-dev">+ (BUZ)</span></div>
+    </div>
+    <div class="pin-box">
+      <div class="pin-head">INFO RAPIDA</div>
+      <div class="pin-row"><span style="font-size:.85rem;color:var(--white-dim)">Protocolo OLED</span><span class="ptag ptag-dev">I2C</span></div>
+      <div class="pin-row"><span style="font-size:.85rem;color:var(--white-dim)">Pull-up BTN</span><span class="ptag ptag-dev">Interno ESP32</span></div>
+      <div class="pin-row"><span style="font-size:.85rem;color:var(--white-dim)">Buzzer tipo</span><span class="ptag ptag-dev">Pasivo PWM</span></div>
+      <div class="pin-row"><span style="font-size:.85rem;color:var(--white-dim)">Librería</span><span class="ptag ptag-dev">Adafruit SSD1306</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- PCB -->
+<section id="pcb" class="card">
+  <div class="h2">PCB &amp; 3D<span>KICAD </span></div>
+  <hr class="rule">
+  <p>El PCB fue diseñado en <em>KiCad</em></em> — 5 unidades, 2 capas, El diseño es compacto, con los botones en los extremos laterales para que sea natural tocarlos como bongos de verdad.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px;">
+    <div>
+      <!-- PON TU FOTO AQUI: foto del PCB -->
+      <img src="Captura de pantalla 2026-06-02 063926.png" alt="PCB top view" class="photo-slot" style="width:100%;height:200px;object-fit:contain;display:block;">
+      <p style="font-family:'VT323',monospace;font-size:.8rem;letter-spacing:2px;color:var(--pink-dim);text-align:center;margin-top:6px;">PCB TOP VIEW — KICAD</p>
+    </div>
+    <div>
+      <!-- PON TU FOTO AQUI: render 3D -->
+      <img src="Captura de pantalla 2026-06-01 191857.png" alt="render 3D" class="photo-slot" style="width:100%;height:200px;object-fit:contain;display:block;">
+      <p style="font-family:'VT323',monospace;font-size:.8rem;letter-spacing:2px;color:var(--pink-dim);text-align:center;margin-top:6px;">VISTA 3D — KICAD</p>
+    </div>
+  </div>
+  <div class="hl">
+     </div>
+</section>
+
+<!-- CAD -->
+<section id="cad" class="card card-dark">
+  <div class="h2">Diseño CAD<span>CAJA / ENCLOSURE</span></div>
+  <hr class="rule">
+  <div style="display:grid;grid-template-columns:1fr 200px;gap:28px;align-items:start;">
+    <div>
+      <p>La caja fue diseñada para que el <em>OLED</em> quede visible al frente, los botones sobresalgan a los lados — cómodo para tocar con ambas manos.</p>
+        <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px;">
+        <span class="chip">CAD 3D</span>
+      
+        <span class="chip">PLA</span>
+       
+      </div>
+    </div>
+    <div>
+      <!-- PON TU FOTO AQUI: foto del CAD / caja 3D -->
+      <img src="Captura de pantalla 2026-06-01 192201.png" alt="CAD diseño" class="photo-slot" style="width:100%;height:180px;object-fit:contain;display:block;">
+    </div>
+  </div>
+</section>
+
+<!-- ENSAMBLAJE -->
+<section id="ens" class="card">
+  <div class="h2">Ensamblaje<span>PASO A PASO</span></div>
+  <hr class="rule">
+  <div class="step"><div class="snum">1</div><div class="stext"><strong>Imprimir la caja 3D, tapa superior con ventana OLED + huecos de botones, base inferior con ranura USB.</div></div>
+  <div class="step"><div class="snum">2</div><div class="stext"><strong>Soldar el PCB</strong>ESP32 en su socket, conector del OLED (I2C), botones laterales, y buzzer. Verificar orientación del buzzer — el pin positivo está marcado.</div></div>
+  <div class="step"><div class="snum">3</div><div class="stext"><strong>Conectar el OLED</strong>GND→GND · VCC→3V3 · SDA→GPIO21 · SCL→GPIO22. El display encaja en la ventana frontal de la caja con un pequeño bisel.</div></div>
+  <div class="step"><div class="snum">4</div><div class="stext"><strong>Flashear el firmware</strong>Arduino IDE o PlatformIO. Instalar librerías: <code>Adafruit SSD1306</code> y <code>Adafruit GFX</code>. Compilar y cargar por USB.</div></div>
+  <div class="step"><div class="snum">5</div><div class="stext"><strong>Probar antes de cerrar</strong>Verificar OLED con animación, botones que responden, buzzer con notas. Monitor Serial para debug si algo falla.</div></div>
+  <div class="step"><div class="snum">6</div><div class="stext"><strong>Ensamblar en la caja</strong>PCB en la base → OLED alineado con ventana → botones en huecos laterales → cerrar con tornillos M3 o snap fit. Done.</div></div>
+</section>
+
+<!-- CÓDIGO -->
+<section id="code" class="card card-dark">
+  <div class="h2">Codigo<span>ARDUINO / C++ — ESP32</span></div>
+  <hr class="rule">
+
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 20px;">
+    <span class="chip">Adafruit_SSD1306</span>
+    <span class="chip">Adafruit_GFX</span>
+    <span class="chip">Wire.h</span>
+    <span class="chip">ledcWriteTone()</span>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-bar">
+      <div class="cdot r"></div><div class="cdot y"></div><div class="cdot g"></div>
+      <span class="cfile">bongo_cat.ino</span>
+    </div>
+    <div class="code-body">
+<pre><span class="cc">// ═══════════════════════════════════════════════════
+//   BONGO CAT — ESP32 + OLED 0.91" + Buzzer Pasivo
+//   Arduino Framework · 2026
+// ═══════════════════════════════════════════════════</span>
+
+<span class="ck">#include</span> <span class="cs">&lt;Wire.h&gt;</span>
+<span class="ck">#include</span> <span class="cs">&lt;Adafruit_GFX.h&gt;</span>
+<span class="ck">#include</span> <span class="cs">&lt;Adafruit_SSD1306.h&gt;</span>
+
+<span class="cc">// ─── PANTALLA ───</span>
+<span class="ck">#define</span> <span class="cd">SCREEN_WIDTH</span>   <span class="cn">128</span>
+<span class="ck">#define</span> <span class="cd">SCREEN_HEIGHT</span>   <span class="cn">32</span>
+<span class="ck">#define</span> <span class="cd">OLED_RESET</span>     <span class="cn">-1</span>
+<span class="ck">#define</span> <span class="cd">SCREEN_ADDR</span>    <span class="cn">0x3C</span>
+
+<span class="cc">// ─── PINES ───</span>
+<span class="ck">#define</span> <span class="cd">BTN_L</span>      <span class="cn">18</span>
+<span class="ck">#define</span> <span class="cd">BTN_R</span>      <span class="cn">19</span>
+<span class="ck">#define</span> <span class="cd">BUZZER</span>     <span class="cn">25</span>
+<span class="ck">#define</span> <span class="cd">BUZ_CH</span>     <span class="cn">0</span>
+
+<span class="cc">// ─── NOTAS ───</span>
+<span class="ck">#define</span> <span class="cd">NOTE_A4</span>  <span class="cn">440</span>
+<span class="ck">#define</span> <span class="cd">NOTE_D5</span>  <span class="cn">587</span>
+
+<span class="ct">Adafruit_SSD1306</span> display(SCREEN_WIDTH, SCREEN_HEIGHT, &amp;Wire, OLED_RESET);
+
+<span class="cc">// ─── ESTADO ───</span>
+<span class="ct">bool</span> lUp = <span class="ck">false</span>, rUp = <span class="ck">false</span>;
+<span class="ct">unsigned long</span> lastHit = <span class="cn">0</span>;
+<span class="ck">const int</span> BEAT = <span class="cn">150</span>;
+
+<span class="cc">// ─── BITMAPS DEL GATO (generados con image2cpp) ───
+// 4 frames: neutral, brazo izq, brazo der, ambos</span>
+<span class="ck">const unsigned char</span> PROGMEM catNeutral[] = {
+  <span class="cn">0x00</span>,<span class="cn">0x00</span>,<span class="cn">0x07</span>,<span class="cn">0xE0</span>,<span class="cn">0x00</span>,<span class="cn">0x00</span>,<span class="cn">0x00</span>,<span class="cn">0x00</span>,
+  <span class="cc">/* ... 248 bytes total para 64x32 bitmap ... */</span>
+};
+<span class="ck">const unsigned char</span> PROGMEM catLeftUp[]  = { <span class="cc">/* ... */</span> };
+<span class="ck">const unsigned char</span> PROGMEM catRightUp[] = { <span class="cc">/* ... */</span> };
+<span class="ck">const unsigned char</span> PROGMEM catBothUp[]  = { <span class="cc">/* ... */</span> };
+
+<span class="cc">// ─── SETUP ───</span>
+<span class="ct">void</span> <span class="cf">setup</span>() {
+  <span class="ck">if</span> (!display.<span class="cf">begin</span>(SSD1306_SWITCHCAPVCC, SCREEN_ADDR)) {
+    <span class="ck">for</span>(;;);  <span class="cc">// halt si falla el OLED</span>
+  }
+  display.<span class="cf">clearDisplay</span>();
+  display.<span class="cf">display</span>();
+
+  <span class="cf">pinMode</span>(BTN_L, INPUT_PULLUP);
+  <span class="cf">pinMode</span>(BTN_R, INPUT_PULLUP);
+
+  <span class="cc">// LEDC para PWM del buzzer (ESP32 native)</span>
+  <span class="cf">ledcSetup</span>(BUZ_CH, <span class="cn">2000</span>, <span class="cn">8</span>);
+  <span class="cf">ledcAttachPin</span>(BUZZER, BUZ_CH);
+
+  <span class="cf">splashScreen</span>();
+}
+
+<span class="cc">// ─── LOOP ───</span>
+<span class="ct">void</span> <span class="cf">loop</span>() {
+  <span class="ct">bool</span> btnL = (<span class="cf">digitalRead</span>(BTN_L) == LOW);
+  <span class="ct">bool</span> btnR = (<span class="cf">digitalRead</span>(BTN_R) == LOW);
+  <span class="ct">unsigned long</span> now = <span class="cf">millis</span>();
+
+  <span class="ck">if</span> (btnL &amp;&amp; !lUp) { lUp = <span class="ck">true</span>; lastHit = now; <span class="cf">ledcWriteTone</span>(BUZ_CH, NOTE_A4); }
+  <span class="ck">if</span> (btnR &amp;&amp; !rUp) { rUp = <span class="ck">true</span>; lastHit = now; <span class="cf">ledcWriteTone</span>(BUZ_CH, NOTE_D5); }
+
+  <span class="ck">if</span> (now - lastHit &gt; BEAT) {
+    lUp = rUp = <span class="ck">false</span>;
+    <span class="cf">ledcWriteTone</span>(BUZ_CH, <span class="cn">0</span>);
+  }
+
+  <span class="cf">drawCat</span>();
+  <span class="cf">delay</span>(<span class="cn">10</span>);
+}
+
+<span class="cc">// ─── RENDER ───</span>
+<span class="ct">void</span> <span class="cf">drawCat</span>() {
+  display.<span class="cf">clearDisplay</span>();
+
+  <span class="ck">const unsigned char*</span> frame = catNeutral;
+  <span class="ck">if</span>      (lUp &amp;&amp; rUp) frame = catBothUp;
+  <span class="ck">else if</span> (lUp)        frame = catLeftUp;
+  <span class="ck">else if</span> (rUp)        frame = catRightUp;
+
+  display.<span class="cf">drawBitmap</span>(<span class="cn">32</span>, <span class="cn">0</span>, frame, <span class="cn">64</span>, <span class="cn">32</span>, WHITE);
+
+  <span class="ck">if</span> (lUp || rUp) {
+    display.<span class="cf">setTextSize</span>(<span class="cn">1</span>);
+    display.<span class="cf">setTextColor</span>(WHITE);
+    display.<span class="cf">setCursor</span>(<span class="cn">2</span>, <span class="cn">4</span>);  display.<span class="cf">print</span>(<span class="cs">"♪"</span>);
+    display.<span class="cf">setCursor</span>(<span class="cn">108</span>, <span class="cn">6</span>); display.<span class="cf">print</span>(<span class="cs">"♫"</span>);
+  }
+
+  display.<span class="cf">display</span>();
+}
+
+<span class="ct">void</span> <span class="cf">splashScreen</span>() {
+  display.<span class="cf">clearDisplay</span>();
+  display.<span class="cf">setTextSize</span>(<span class="cn">1</span>);
+  display.<span class="cf">setTextColor</span>(WHITE);
+  display.<span class="cf">setCursor</span>(<span class="cn">20</span>, <span class="cn">8</span>);  display.<span class="cf">println</span>(<span class="cs">"BONGO CAT :3"</span>);
+  display.<span class="cf">setCursor</span>(<span class="cn">16</span>, <span class="cn">20</span>); display.<span class="cf">println</span>(<span class="cs">"tap to play!"</span>);
+  display.<span class="cf">display</span>();
+  <span class="cf">delay</span>(<span class="cn">2000</span>);
+}</pre>
+    </div>
+  </div>
+ 
+</section>
+
+<!-- RESULTADO FINAL -->
+<section id="fin" class="card card-dark">
+  <div class="h2">Resultado Final<span>FUNCIONANDO</span></div>
+  <hr class="rule">
+
+  <!-- DEMO INTERACTIVA -->
+  <div style="text-align:center;padding:24px 0 16px;">
+    <div style="display:inline-block;background:#080808;border:1.5px solid var(--border-pink);padding:20px 48px;box-shadow:6px 6px 0 var(--pink-dim);">
+      <div style="font-family:'VT323',monospace;color:var(--pink);font-size:.8rem;letter-spacing:4px;margin-bottom:10px;opacity:.7;">BONGO CAT v1.0</div>
+      <canvas id="oled" width="256" height="64" style="image-rendering:pixelated;border:1px solid #222;display:block;"></canvas>
+      <div style="font-family:'VT323',monospace;color:#333;font-size:.65rem;letter-spacing:2px;margin-top:6px;">128×32 OLED SSD1306</div>
+    </div>
+
+    <div style="display:flex;justify-content:center;gap:32px;margin-top:20px;">
+      <button id="bL" style="font-family:'VT323',monospace;font-size:1.4rem;letter-spacing:2px;background:var(--pink);color:var(--black);border:none;padding:12px 28px;cursor:pointer;box-shadow:4px 4px 0 var(--pink-dim);transition:all .08s;">BTN LEFT</button>
+      <button id="bR" style="font-family:'VT323',monospace;font-size:1.4rem;letter-spacing:2px;background:var(--pink);color:var(--black);border:none;padding:12px 28px;cursor:pointer;box-shadow:4px 4px 0 var(--pink-dim);transition:all .08s;">BTN RIGHT</button>
+    </div>
+    <p style="font-family:'VT323',monospace;font-size:.9rem;letter-spacing:2px;color:var(--pink-dim);margin-top:10px;">PRESIONA LOS BOTONES</p>
+  </div>
+
+  <hr class="rule">
+
+  <div class="grid-4">
+    <div class="ic"><div class="ic-label">Estado</div><div class="ic-val" style="color:#50FA7B;">DONE</div></div>
+    <div class="ic"><div class="ic-label">Simulacion.</div><div class="ic-val">Wokwi</div></div>
+    <div class="ic"><div class="ic-label">Frames</div><div class="ic-val">4</div></div>
+    <div class="ic"><div class="ic-label">Notas</div><div class="ic-val">A4 + D5</div></div>
+  </div>
+
+  <div style="text-align:center;margin-top:28px;">
+    <a href="https://wokwi.com/projects/465673627824576513" target="_blank" class="try-btn">PROBAR SIMULACION EN WOKWI</a>
+  </div>
+</section>
+
+<!-- FOTO DEL PROYECTO -->
+<section id="fotos" class="card">
+  <div class="h2">Foto del Proyecto<span>EL RESULTADO FISICO</span></div>
+  <hr class="rule">
+  <p>El proyecto terminado, ensamblado y funcionando. Sube tus fotos del hardware real aquí.</p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px;">
+    <div>
+      <!-- PON TU FOTO AQUI: foto principal del proyecto terminado -->
+      <img src="Captura de pantalla 2026-06-19 095452.png" alt="foto principal" class="photo-slot" style="width:100%;height:260px;object-fit:cover;display:block;">
+      <p style="font-family:'VT323',monospace;font-size:.8rem;letter-spacing:2px;color:var(--pink-dim);text-align:center;margin-top:6px;">FOTO PRINCIPAL</p>
+    </div>
+    <div style="display:grid;grid-template-rows:1fr 1fr;gap:16px;">
+      <!-- PON TU FOTO AQUI: detalle lateral -->
+      <img src="Captura de pantalla 2026-06-19 095555.png" alt="detalle lateral" class="photo-slot" style="width:100%;height:122px;object-fit:cover;display:block;">
+      <!-- PON TU FOTO AQUI: PCB o interior -->
+      <img src="WhatsApp Image 2026-06-18 at 10.27.38 PM (1).jpeg" alt="PCB interior" class="photo-slot" style="width:100%;height:122px;object-fit:cover;display:block;">
+    </div>
+  </div>
+</section>
+
+</div><!-- .page -->
+
+<footer>
+  BONGO CAT &nbsp;·&nbsp; ESP32 PROJECT &nbsp;·&nbsp; 2026<br>
+  <span style="font-size:.85rem;color:var(--border-pink);margin-top:6px;display:block;">hecho con amor y mucho cafe</span>
+</footer>
+
+<script>
+(function(){
+  const c = document.getElementById('sparkles');
+  const W = window.innerWidth;
+  const H = Math.max(document.body.scrollHeight, window.innerHeight * 3);
+  const colors = ['#FF6EB4','#C44E89','#FFB8D8','#FF6EB455'];
+  for(let i=0;i<50;i++){
+    const s = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    const sz = 5 + Math.random()*9;
+    s.setAttribute('width',sz); s.setAttribute('height',sz);
+    s.setAttribute('viewBox','0 0 20 20');
+    s.style.cssText=`position:absolute;left:${Math.random()*W}px;top:${Math.random()*H}px;`;
+    s.style.setProperty('--d',(2+Math.random()*4).toFixed(1)+'s');
+    s.style.setProperty('--dl',(Math.random()*5).toFixed(1)+'s');
+    s.classList.add('sp');
+    const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d','M10 1L11.8 8.2L19 10L11.8 11.8L10 19L8.2 11.8L1 10L8.2 8.2Z');
+    p.setAttribute('fill',colors[Math.floor(Math.random()*colors.length)]);
+    s.appendChild(p); c.appendChild(s);
+  }
+  for(let i=0;i<60;i++){
+    const d=document.createElement('div');
+    d.style.cssText=`position:absolute;left:${Math.random()*W}px;top:${Math.random()*H}px;width:2px;height:2px;border-radius:50%;background:${colors[0]};`;
+    d.style.setProperty('--d',(1.5+Math.random()*3).toFixed(1)+'s');
+    d.style.setProperty('--dl',(Math.random()*6).toFixed(1)+'s');
+    d.classList.add('sp'); c.appendChild(d);
+  }
+})();
+
+// OLED DEMO
+(function(){
+  const cv = document.getElementById('oled');
+  const ctx = cv.getContext('2d');
+  const PX = 2;
+  let L=false, R=false, lt=null, rt=null;
+
+  function draw(l,r){
+    ctx.fillStyle='#000';
+    ctx.fillRect(0,0,256,64);
+    ctx.fillStyle='#00FF00';
+    const ox=32, oy=0;
+    function px(x,y,w,h){ctx.fillRect(x*PX,y*PX,w*PX,h*PX);}
+
+    // body
+    for(let row=18;row<32;row++){const hw=Math.max(0,18-Math.abs(row-24)*0.4);px(ox+32-hw,oy+row,hw*2,1);}
+    // head
+    for(let row=4;row<18;row++){const hw=Math.max(0,14-Math.abs(row-11)*0.7);px(ox+32-hw,oy+row,hw*2,1);}
+    // ears
+    for(let i=0;i<5;i++){px(ox+19+i,oy+4-i,3,1);px(ox+42-i-2,oy+4-i,3,1);}
+    // eyes
+    if(l||r){px(ox+25,oy+9,6,1);px(ox+34,oy+9,6,1);px(ox+26,oy+10,4,1);px(ox+35,oy+10,4,1);}
+    else{px(ox+26,oy+9,4,1);px(ox+35,oy+9,4,1);px(ox+25,oy+10,1,1);px(ox+29,oy+10,1,1);px(ox+34,oy+10,1,1);px(ox+38,oy+10,1,1);}
+    // nose
+    px(ox+30,oy+12,4,2);
+    // blush
+    for(let i=0;i<3;i++){px(ox+20+i*2,oy+13,1,1);px(ox+39+i*2,oy+13,1,1);}
+    // left arm
+    if(l){px(ox+16,oy+12,4,2);px(ox+13,oy+14,4,2);px(ox+11,oy+16,3,2);px(ox+10,oy+18,3,2);for(let i=0;i<5;i++)px(ox+8+i,oy+20,1,2);}
+    else{px(ox+16,oy+20,4,2);px(ox+14,oy+22,4,2);px(ox+13,oy+24,5,2);for(let i=0;i<5;i++)px(ox+12+i,oy+26,1,2);}
+    // right arm
+    if(r){px(ox+44,oy+12,4,2);px(ox+47,oy+14,4,2);px(ox+50,oy+16,3,2);px(ox+51,oy+18,3,2);for(let i=0;i<5;i++)px(ox+51+i,oy+20,1,2);}
+    else{px(ox+44,oy+20,4,2);px(ox+46,oy+22,4,2);px(ox+46,oy+24,5,2);for(let i=0;i<5;i++)px(ox+47+i,oy+26,1,2);}
+    // bongos
+    for(let row=27;row<32;row++){const hw=Math.max(0,8-Math.abs(row-29)*0.5);px(ox+10-hw,oy+row,hw*2,1);px(ox+54-hw,oy+row,hw*2,1);}
+    // notes
+    if(l||r){
+      ctx.font='bold 10px monospace';ctx.fillStyle='#00FF00';
+      if(l)ctx.fillText('♪',4,14);
+      if(r)ctx.fillText('♫',228,14);
+    }
+    // scanlines
+    ctx.fillStyle='rgba(0,0,0,0.1)';
+    for(let row=0;row<64;row+=2)ctx.fillRect(0,row,256,1);
+  }
+
+  function pressL(){L=true;draw(L,R);clearTimeout(lt);lt=setTimeout(()=>{L=false;draw(L,R);},200);}
+  function pressR(){R=true;draw(L,R);clearTimeout(rt);rt=setTimeout(()=>{R=false;draw(L,R);},200);}
+
+  const bL=document.getElementById('bL'), bR=document.getElementById('bR');
+  bL.addEventListener('mousedown',pressL);
+  bL.addEventListener('touchstart',e=>{e.preventDefault();pressL();});
+  bR.addEventListener('mousedown',pressR);
+  bR.addEventListener('touchstart',e=>{e.preventDefault();pressR();});
+
+  [bL,bR].forEach(b=>{
+    b.addEventListener('mousedown',()=>{b.style.transform='translate(3px,3px)';b.style.boxShadow='1px 1px 0 var(--pink-dim)';});
+    b.addEventListener('mouseup',()=>{b.style.transform='';b.style.boxShadow='4px 4px 0 var(--pink-dim)';});
+    b.addEventListener('mouseleave',()=>{b.style.transform='';b.style.boxShadow='4px 4px 0 var(--pink-dim)';});
+  });
+
+  draw(false,false);
+
+  // auto-demo
+  let auto=true, ap=0;
+  const seq=[()=>pressL(),()=>{},()=>pressR(),()=>{},()=>pressL(),()=>pressR(),()=>{},()=>{}];
+  function step(){if(!auto)return;seq[ap%seq.length]();ap++;setTimeout(step,300);}
+  setTimeout(step,1400);
+  bL.addEventListener('mousedown',()=>auto=false);
+  bR.addEventListener('mousedown',()=>auto=false);
+})();
+</script>
+</body>
+</html>
